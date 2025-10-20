@@ -1,0 +1,12 @@
+# Grundläggande numerik och databehandling
+pandas>=2.2.0
+numpy>=1.26.0
+
+# För HTTP-förfrågningar till CoinGecko m.fl.
+requests>=2.31.0
+
+# För tidszonhantering (ZoneInfo finns i Python 3.9+, men pytz används ibland i äldre miljöer)
+pytz>=2024.1
+
+# För datumtolkning i äldre Pandas-versioner (inte strikt nödvändigt men bra fallback)
+python-dateutil>=2.9.0
