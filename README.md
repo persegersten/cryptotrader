@@ -1,6 +1,7 @@
 # cryptotrader
+*************
 Crypto trader
-
+*************
 # initiera tom portfölj med kontanter (exempel)
 echo '{"cash": 10000, "positions": {}}' > portfolio.json
 
