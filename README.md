@@ -10,6 +10,9 @@ Loggar till trades_log.csv
 Sparar uppdaterad portfolio.json
 Med --dry-run: inga ordrar skickas, allt bara skrivs ut
 
+# installera moduler
+python -m pip install -r requirements.txt
+
 # initiera tom portfölj med kontanter (exempel)
 echo '{"cash": 10000, "positions": {}}' > portfolio.json
 

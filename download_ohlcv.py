@@ -20,6 +20,8 @@ from pathlib import Path
 COIN_ID = "bitcoin"          # Byt t.ex. till "ethereum", "solana", "chainlink"
 VS_CURRENCY = "usd"          # Vanligtvis "usd" för modellering
 DAYS = 30                    # 30 dagars historik
+DATA_FOLDER = "./kursdata"   # Folder för nerladdad kursdata
+HISTORY_FOLDER = "./history" # Folder för nerladdad historik
 # =====================
 
 def fetch_ohlc(coin_id: str, vs_currency: str, days: int):
@@ -101,7 +103,13 @@ def main():
     now_se = datetime.now(ZoneInfo("Europe/Stockholm"))
     tag = now_se.strftime("%Y%m%d_%H%M%S")
     fname = f"crypto_{COIN_ID}_{VS_CURRENCY}_{tag}.csv"
-    out = Path(fname).resolve()
+    
+    # Skapa katalogen om den inte finns
+    DATA_PATH = Path(DATA_FOLDER)
+    DATA_PATH.mkdir(parents=True, exist_ok=True)
+
+    # Sätt filnamn med full sökväg
+    out = (DATA_PATH / fname).resolve()
 
     # 5) Skriv CSV
     with open(out, "w", newline="", encoding="utf-8") as f:
