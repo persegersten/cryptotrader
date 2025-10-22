@@ -18,14 +18,48 @@ import argparse
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from pathlib import Path
-
 import pandas as pd
 import numpy as np
+import ccxt
+from pathlib import Path
+import sys
 
-try:
-    import ccxt
-except ImportError:
-    ccxt = None
+# --------- nycklar --------------------
+REQUIRED_ENV = ("CCXT_API_KEY", "CCXT_API_SECRET")
+
+def load_secrets_if_missing(file_path: str = "secrets.json") -> None:
+    """
+    - Om secrets.json finns: läs in och fyll endast saknade env-variabler.
+    - Om den inte finns: gör ingenting (miljön måste redan ha allt).
+    - Skriver aldrig ut nyckelvärden.
+    """
+    p = Path(file_path).expanduser()
+    if not p.exists():
+        # ingen fil → bara lämna miljön orörd
+        return
+
+    try:
+        with p.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception as e:
+        # Fil finns men kan ej läsas → faila säkert
+        sys.exit(f"Fel: kunde inte läsa {file_path}: {e}")
+
+    # Sätt ENDAST saknade env-nycklar
+    for k, v in (data or {}).items():
+        if k in REQUIRED_ENV and (k not in os.environ or not os.environ[k]):
+            os.environ[k] = str(v)
+
+def require_env(keys=REQUIRED_ENV) -> None:
+    """Avsluta med tydlig text om någon obligatorisk nyckel saknas (värden skrivs aldrig)."""
+    missing = [k for k in keys if not os.environ.get(k)]
+    if missing:
+        names = ", ".join(missing)
+        sys.exit(
+            "Saknar nödvändiga miljövariabler: "
+            f"{names}. Sätt dem i miljön eller lägg en secrets.json."
+        )
+
 
 
 # ---------- TEKNISK ANALYS ----------
@@ -123,6 +157,8 @@ class CCXTBroker:
 
 # ---------- MAIN ----------
 def main():
+    load_secrets_if_missing("secrets.json")
+
     ap = argparse.ArgumentParser(description="Binär TA-agent (0/100%) med CCXT och dry-run")
     ap.add_argument("--csv", required=True)
     ap.add_argument("--symbol", required=True)

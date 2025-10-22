@@ -16,8 +16,8 @@ fi
 export IN_DATA="$FILE"
 
 python ta_signal_agent_live_binary.py \
-  --csv ./history/crypto_bitcoin_usd_20251020_171228.csv \
+  --csv $IN_DATA \
   --symbol BTC/USDT \
   --exchange binance \
-  --sandbox True
-  --portfolio portfolio.json
+  --portfolio portfolio.json \
+  --sandbox
