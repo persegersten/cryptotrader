@@ -41,3 +41,6 @@ python3 ta_signal_agent_live_binary.py \
   --buy-alloc 1.0 \
   --sell-alloc 0.0
 
+# Deploy på Heroku
+git push heroku main
+
