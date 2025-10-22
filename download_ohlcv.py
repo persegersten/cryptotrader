@@ -12,7 +12,7 @@ import csv
 import time
 import math
 import requests
-from datetime import datetime
+from datetime import datetime, UTC
 from zoneinfo import ZoneInfo  # Python 3.9+
 from pathlib import Path
 
@@ -56,7 +56,7 @@ def fetch_volumes(coin_id: str, vs_currency: str, days: int):
 
 def ms_to_iso(ms: int) -> str:
     # Vi behåller ISO i UTC för modeller/återuppspelning
-    return datetime.utcfromtimestamp(ms / 1000.0).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return datetime.fromtimestamp(ms / 1000.0, tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 def nearest_volume(ts_ms: int, vol_rows, tol_ms: int = 60 * 60 * 1000):
     """

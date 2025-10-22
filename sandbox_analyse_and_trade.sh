@@ -1,5 +1,7 @@
 #!/bin/sh
 
+echo "Rebalance portfolio"
+
 mv ./kursdata/* ./history/
 
 python download_ohlcv.py
@@ -15,9 +17,13 @@ fi
 # Sätt miljövariabeln
 export IN_DATA="$FILE"
 
+python download_portfolio.py --sandbox
+
 python ta_signal_agent_live_binary.py \
   --csv $IN_DATA \
   --symbol BTC/USDT \
   --exchange binance \
   --portfolio portfolio.json \
   --sandbox
+
+echo "Done"
