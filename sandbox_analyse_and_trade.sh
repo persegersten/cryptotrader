@@ -1,5 +1,7 @@
 #!/bin/sh
 
+python schedule_gate.py --at 0 4 8 12 16 20 --tz Europe/Stockholm || exit 0
+
 echo "Rebalance portfolio"
 
 mv ./kursdata/* ./history/
