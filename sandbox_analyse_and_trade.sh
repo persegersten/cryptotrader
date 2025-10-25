@@ -1,7 +1,7 @@
 #!/bin/sh
 
 python download_portfolio.py --sandbox
-cat portfolio.json
+cat portfolio.json | grep BTC
 
 python schedule_gate.py --at 0 4 8 12 16 20 --tz Europe/Stockholm || exit 0
 
