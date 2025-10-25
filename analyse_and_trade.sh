@@ -26,7 +26,7 @@ python download_portfolio.py
 
 python ta_signal_agent_live_binary.py \
   --csv ./history/crypto_bitcoin_usd_20251020_171228.csv \
-  --symbol BTC/USDT \
+  --symbol ETH/USDT \
   --exchange binance \
   --portfolio portfolio.json
   --portfolio portfolio.json
