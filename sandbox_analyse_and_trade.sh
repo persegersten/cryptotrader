@@ -1,5 +1,8 @@
 #!/bin/sh
 
+python download_portfolio.py --sandbox
+cat portfolio.json
+
 python schedule_gate.py --at 0 4 8 12 16 20 --tz Europe/Stockholm || exit 0
 
 echo "Rebalance portfolio"
@@ -18,8 +21,6 @@ fi
 
 # Sätt miljövariabeln
 export IN_DATA="$FILE"
-
-python download_portfolio.py --sandbox
 
 python ta_signal_agent_live_binary.py \
   --csv $IN_DATA \
