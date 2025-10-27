@@ -1,15 +1,15 @@
 #!/bin/sh
 
-python download_portfolio.py --sandbox
-cat portfolio.json
+echo "CryptoHunk start trading"
 
-python schedule_gate.py --at 0 4 8 12 16 20 --tz Europe/Stockholm || exit 0
+python schedule_gate.py --grace-minutes 30 --at 0 4 8 12 16 20 --tz Europe/Stockholm || exit 0
 
 echo "Rebalance portfolio"
 
 mv ./kursdata/* ./history/
 
 python download_ohlcv.py
+cat portfolio.json | grep ETH
 
 # Hämta första filen i ./kursdata
 FILE=$(find ./kursdata -maxdepth 1 -type f | head -n 1)
