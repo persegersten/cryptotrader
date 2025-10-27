@@ -23,6 +23,7 @@ import numpy as np
 import ccxt
 from pathlib import Path
 import sys
+from heroku_ip_proxy import getProxy
 
 # --------- nycklar --------------------
 REQUIRED_ENV = ("CCXT_API_KEY", "CCXT_API_SECRET")
@@ -128,12 +129,23 @@ class CCXTBroker:
     def __init__(self, exchange_id, api_key=None, api_secret=None, sandbox=False):
         if ccxt is None:
             raise RuntimeError("ccxt saknas. Installera med: pip install ccxt")
+        
+        proxies = getProxy()
+        print(f"IP proxie: {proxies}")
+
         klass = getattr(ccxt, exchange_id)
-        self.exchange = klass({
+        exchange_config = {
             "apiKey": api_key or os.getenv("CCXT_API_KEY", ""),
             "secret": api_secret or os.getenv("CCXT_API_SECRET", ""),
             "enableRateLimit": True,
-        })
+        }
+
+        # Lägg bara till proxies om de finns
+        if proxies:
+            exchange_config["requests_kwargs"] = {"proxies": proxies}
+
+        self.exchange = klass(exchange_config)
+        
         if sandbox and hasattr(self.exchange, "set_sandbox_mode"):
             self.exchange.set_sandbox_mode(True)
 

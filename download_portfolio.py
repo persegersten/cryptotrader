@@ -16,6 +16,7 @@ import json
 from pathlib import Path
 import argparse
 import ccxt
+from heroku_ip_proxy import getProxy
 
 def load_secrets_if_missing(file_path="secrets.json"):
     """Sätter endast env-variabler om de inte redan finns."""
@@ -32,6 +33,9 @@ def load_secrets_if_missing(file_path="secrets.json"):
         print(f"⚠️  Kunde inte läsa {file_path}: {e}")
 
 def main():
+    proxies = getProxy()
+    print(f"IP proxie: {proxies}")
+
     ap = argparse.ArgumentParser(description="Ladda ner Binance-portfölj")
     ap.add_argument("--sandbox", action="store_true", help="Kör mot Binances testnet (låtsaspengar)")
     ap.add_argument("--out", default="portfolio.json", help="Filnamn för export (default: portfolio.json)")
@@ -56,6 +60,9 @@ def main():
         "apiKey": api_key,
         "secret": api_secret,
         "enableRateLimit": True,
+        "requests_kwargs": {
+        "proxies": proxies
+        }
     })
 
     if args.sandbox:

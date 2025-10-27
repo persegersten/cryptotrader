@@ -13,3 +13,4 @@ python-dateutil>=2.9.0
 
 # CCXT – CryptoCurrency eXchange Trading
 ccxt>=4.5.11
+

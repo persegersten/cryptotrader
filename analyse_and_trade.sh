@@ -1,8 +1,10 @@
 #!/bin/sh
 
+echo "========================"
 echo "CryptoHunk start trading"
+echo "========================"
 
-python schedule_gate.py --grace-minutes 30 --at 0 4 8 12 16 20 --tz Europe/Stockholm || exit 0
+python schedule_gate.py --grace-minutes 5 --at 0 4 8 12 16 20 --tz Europe/Stockholm || exit 0
 
 echo "Rebalance portfolio"
 
@@ -28,7 +30,6 @@ python ta_signal_agent_live_binary.py \
   --csv ./history/crypto_bitcoin_usd_20251020_171228.csv \
   --symbol ETH/USDT \
   --exchange binance \
-  --portfolio portfolio.json
   --portfolio portfolio.json
 
   echo "Done"
