@@ -1,7 +1,5 @@
 #!/bin/sh
 
-python download_portfolio.py --sandbox
-cat portfolio.json | grep BTC
 
 python schedule_gate.py --at 0 4 8 12 16 20 --tz Europe/Stockholm || exit 0
 
@@ -18,6 +16,8 @@ if [ -z "$FILE" ]; then
   echo "Ingen fil hittades i ./kursdata"
   exit 1
 fi
+
+python download_portfolio.py --sandbox
 
 # Sätt miljövariabeln
 export IN_DATA="$FILE"
