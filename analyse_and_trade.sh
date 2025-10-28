@@ -9,9 +9,8 @@ python schedule_gate.py --grace-minutes 5 --at 0 4 8 12 16 20 --tz Europe/Stockh
 echo "Rebalance portfolio"
 
 python download_portfolio.py
-cat portfolio.json | grep ETH
-
-mv ./kursdata/* ./history/
+# cat portfolio.json | grep ETH
+# mv ./kursdata/* ./history/
 
 python download_ohlcv.py
 
