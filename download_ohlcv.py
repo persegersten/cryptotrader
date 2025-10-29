@@ -17,7 +17,7 @@ from zoneinfo import ZoneInfo  # Python 3.9+
 from pathlib import Path
 
 # ====== KONFIG ======
-COIN_ID = "bitcoin"          # Byt t.ex. till "ethereum", "solana", "chainlink"
+COIN_ID = "ethereum"         # Byt t.ex. till "ethereum", "solana", "chainlink"
 VS_CURRENCY = "usd"          # Vanligtvis "usd" för modellering
 DAYS = 30                    # 30 dagars historik
 DATA_FOLDER = "./kursdata"   # Folder för nerladdad kursdata
