@@ -210,7 +210,7 @@ def main():
     equity = cash + units * price
     curr_alloc = (units * price) / equity if equity > 0 else 0
 
-    target_alloc = args.buy-alloc if signal == "BUY" else args.sell_alloc if signal == "SELL" else curr_alloc
+    target_alloc = args.buy_alloc if signal == "BUY" else args.sell_alloc if signal == "SELL" else curr_alloc
     diff = target_alloc - curr_alloc
 
     if abs(diff) < 0.01:
