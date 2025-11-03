@@ -4,7 +4,7 @@ echo "========================"
 echo "CryptoHunk start trading"
 echo "========================"
 
-python schedule_gate.py --grace-minutes 5 --at 0 4 8 12 16 20 --tz Europe/Stockholm || exit 0
+python schedule_gate.py --grace-minutes 55 --at 0 4 8 12 16 17 20 21 --tz Europe/Stockholm || exit 0
 
 echo "Rebalance portfolio"
 

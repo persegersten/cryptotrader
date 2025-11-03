@@ -15,14 +15,28 @@ import requests
 from datetime import datetime, UTC
 from zoneinfo import ZoneInfo  # Python 3.9+
 from pathlib import Path
+import argparse
 
-# ====== KONFIG ======
-COIN_ID = "ethereum"         # Byt t.ex. till "ethereum", "solana", "chainlink"
-VS_CURRENCY = "usd"          # Vanligtvis "usd" för modellering
-DAYS = 30                    # 30 dagars historik
-DATA_FOLDER = "./kursdata"   # Folder för nerladdad kursdata
-HISTORY_FOLDER = "./history" # Folder för nerladdad historik
-# =====================
+def parse_args():
+    parser = argparse.ArgumentParser(description='Download OHLCV data from CoinGecko')
+    parser.add_argument('--coin-id', default="ethereum",
+                      help='Coin ID (default: ethereum)')
+    parser.add_argument('--vs-currency', default="usd",
+                      help='Quote currency (default: usd)')
+    parser.add_argument('--days', type=int, default=30,
+                      help='Number of days of history (default: 30)')
+    parser.add_argument('--data-folder', default="./kursdata",
+                      help='Folder for downloaded price data (default: ./kursdata)')
+    parser.add_argument('--history-folder', default="./history",
+                      help='Folder for downloaded history (default: ./history)')
+    return parser.parse_args()
+
+args = parse_args()
+COIN_ID = args.coin_id
+VS_CURRENCY = args.vs_currency
+DAYS = args.days
+DATA_FOLDER = args.data_folder
+HISTORY_FOLDER = args.history_folder
 
 def fetch_ohlc(coin_id: str, vs_currency: str, days: int):
     """
