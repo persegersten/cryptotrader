@@ -4,7 +4,7 @@ echo "========================"
 echo "CryptoHunk start trading"
 echo "========================"
 
-python schedule_gate.py --grace-minutes 5 --at 0 4 8 12 16 20 21 --tz Europe/Stockholm || exit 0
+python schedule_gate.py --grace-minutes 55 --at 0 4 8 12 16 20 21 --tz Europe/Stockholm || exit 0
 
 echo "Rebalance portfolio"
 
@@ -13,7 +13,9 @@ python download_portfolio.py
 # mv ./kursdata/* ./history/
 
 python download_ohlcv.py --coin-id 'binancecoin' --data-folder 'bnb_data'
+sleep 60
 python download_ohlcv.py --coin-id 'bitcoin' --data-folder 'bitcoin_data'
+sleep 60
 python download_ohlcv.py --coin-id 'ethereum' --data-folder 'ethereum_data'
 
 # Hämta första filen i ./kursdata
