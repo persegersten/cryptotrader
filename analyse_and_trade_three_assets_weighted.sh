@@ -4,7 +4,8 @@ echo "========================"
 echo "CryptoHunk start trading"
 echo "========================"
 
-python schedule_gate.py --grace-minutes 5 --at 0 4 7 8 12 16 20 21 --tz Europe/Stockholm || exit 0
+# TODO Enabld before move to cloud
+# python schedule_gate.py --grace-minutes 5 --at 0 4 7 8 12 16 20 21 --tz Europe/Stockholm || exit 0
 
 echo "Rebalance portfolio"
 
@@ -54,7 +55,7 @@ export IN_DATA_SOLANA="$FILE_SOLANA"
 #  --exchange binance \
 #  --portfolio portfolio.json
 
- python ta_signal_agent_live_three_assets.py \
+ python ta_signal_agent_live_three_assets_weighted.py \
   --csvA $IN_DATA_BNB \
   --csvB $IN_DATA_ETHEREUM \
   --csvC $IN_DATA_SOLANA \
