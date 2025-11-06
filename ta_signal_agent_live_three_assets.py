@@ -132,6 +132,7 @@ class CCXTBroker:
             "apiKey": api_key or os.getenv("CCXT_API_KEY", ""),
             "secret": api_secret or os.getenv("CCXT_API_SECRET", ""),
             "enableRateLimit": True,
+            "options": {"defaultType": "spot"},
         }
         if proxies:
             exchange_config["requests_kwargs"] = {"proxies": proxies}
@@ -287,6 +288,16 @@ def main():
     # Allokeringar i %
     current_alloc = get_current_allocations_pct_three(balances, tuple(syms_list), prices, quote_ccy)
     print("Nuvarande allokering (%):", current_alloc)
+
+    # print("Kontrollerar marknader...")
+    # markets = broker.exchange.load_markets()
+    # for sym_pair in syms_list:
+    #    if sym_pair not in markets:
+    #        sys.exit(f"Symbolen {sym_pair} finns inte på denna marknad.")
+    #    info = markets[sym_pair]["info"]
+    #    print(f"✔ {sym_pair} tillåten, permissions: {info.get('permissions')}")
+    #
+    # print("Exchange options:", broker.exchange.options)
 
     # Rebalansering
     rb: RebalanceResult = rebalance_three(
