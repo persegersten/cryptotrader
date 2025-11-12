@@ -5,19 +5,19 @@ echo "CryptoHunk start trading"
 echo "========================"
 
 # TODO Enabld before move to cloud
-# python schedule_gate.py --grace-minutes 5 --at 0 4 7 8 12 16 20 21 --tz Europe/Stockholm || exit 0
+python src/schedule_gate.py --grace-minutes 5 --at 0 4 7 8 16 20 21 --tz Europe/Stockholm || exit 0
 
 echo "Rebalance portfolio"
 
-python download_portfolio.py
+python src/download_portfolio.py
 # cat portfolio.json | grep ETH
 mv ./bnb_data/* ./history/
 mv ./ethereum_data/* ./history/
 mv ./solana_data/* ./history/
 
-python download_binance_ohlcv.py --symbol 'BNBUSDT' --data-folder 'bnb_data'
-python download_binance_ohlcv.py --symbol 'ETHUSDT' --data-folder 'ethereum_data'
-python download_binance_ohlcv.py --symbol 'SOLUSDT' --data-folder 'solana_data'
+python src/download_binance_ohlcv.py --symbol 'BNBUSDT' --data-folder 'bnb_data'
+python src/download_binance_ohlcv.py --symbol 'ETHUSDT' --data-folder 'ethereum_data'
+python src/download_binance_ohlcv.py --symbol 'SOLUSDT' --data-folder 'solana_data'
 
 
 # Hämta första filen i ./kursdata
@@ -55,7 +55,7 @@ export IN_DATA_SOLANA="$FILE_SOLANA"
 #  --exchange binance \
 #  --portfolio portfolio.json
 
- python ta_signal_agent_live_three_assets.py \
+ python src/ta_signal_agent_live_three_assets.py \
   --csvA $IN_DATA_BNB \
   --csvB $IN_DATA_ETHEREUM \
   --csvC $IN_DATA_SOLANA \
