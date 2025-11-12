@@ -7,7 +7,11 @@ ta_signal_agent_live_binary.py (3-asset edition)
 Tre-tillgångars TA-agent med CCXT-broker och dry-run.
 - Läser tre CSV:er (OHLCV), kör TA per symbol (BUY/SELL/HOLD)
 - Hämtar portfölj (tre bas-coin + USD/quote)
-- Rebalanserar enligt rebalance_three: SELL=0%, övriga lika (1 aktör: 100%, 2: 50/50, 3: ~33/33/33) med ±10% band
+- Rebalanserar enligt enkel strategi:
+    * SELL => 0% (sälj allt)
+    * HOLD => behåll nuvarande
+    * BUY  => köp endast EN tillgång (den BUY med högst score) med all tillgänglig USD
+- Lägg inte köp under minimal USD (default 20 USDC)
 - Lägger market-ordrar (eller simulerar i dry-run)
 - Loggar beslut
 
@@ -220,11 +224,9 @@ def main():
     ap.add_argument("--api-secret", default=None)
     ap.add_argument("--sandbox", action="store_true")
     ap.add_argument("--fee-bps", type=float, default=10.0, help="avgifter i bps")
-    ap.add_argument("--min-trade", type=float, default=10.0, help="minsta order i USD (quote)")
-    ap.add_argument("--dry-run", action="store_true", help="Simulera utan riktiga ordrar")
+    ap.add_argument("--min-trade", type=float, default=20.0, help="minsta order i USD (quote). Default 20 USDC per nya regler")
+    ap.add_argument("--dry-run", action="store_true", help="Simulera utan riktiga ordrar (hämtar ändå verklig portfolio och priser)")
     ap.add_argument("--log", default="trades_log.csv")
-    ap.add_argument("--tolerance", type=float, default=0.10, help="±band runt mål (0.10 = ±10%)")
-    ap.add_argument("--rebalance-even-when-inside-band", action="store_true", help="Tvinga rebalans även inom bandet")
     ap.add_argument("--portfolio", default="portfolio.json", help="Filen att spara täckt portfölj-snapshot till")
     args = ap.parse_args()
 
@@ -269,43 +271,46 @@ def main():
             print("    ·", r)
 
     # Broker / portfölj
-    if not args.dry_run:
-        require_env()
-        broker = CCXTBroker(args.exchange, args.api_key, args.api_secret, args.sandbox)
+    # Vi hämtar alltid verklig portfolio och priser från exchange. 'dry-run' betyder endast:
+    # - vi skippar placering av riktiga ordrar och simulerar exekvering-outputs.
+    require_env()
+    broker = CCXTBroker(args.exchange, args.api_key, args.api_secret, args.sandbox)
+
+    try:
         balances = broker.fetch_balances()
-        prices = {s: (meta[s]["last_close"] if args.dry_run else broker.fetch_price(s)) for s in syms_list}
+    except Exception as e:
+        sys.exit(f"Kunde inte hämta saldon från exchange: {e}")
+
+    # Hämta priser; om det misslyckas fall tillbaka på sista close från CSV
+    prices: Dict[str, float] = {}
+    for s in syms_list:
+        try:
+            prices[s] = broker.fetch_price(s)
+        except Exception as e:
+            print(f"Varning: kunde inte hämta pris för {s} från exchange: {e}. Faller tillbaka på sista close från CSV.")
+            prices[s] = meta[s]["last_close"]
+
+    if args.dry_run:
+        print("Dry-run: använder verkliga saldon och priser men kommer INTE lägga riktiga ordrar.")
     else:
-        print("Dry run-läge: simulerar portfölj med 10 000 i kassa och 0 bas.")
-        broker = None
-        # Simulerade saldon
-        balances = {
-            "free": {quote_ccy: 10_000.0, base_ccys[0]: 0.0, base_ccys[1]: 0.0, base_ccys[2]: 0.0},
-            "used": {},
-            "total": {},
-        }
-        prices = {s: meta[s]["last_close"] for s in syms_list}
+        print("Produktion: kommer lägga riktiga ordrar om planerade orders uppfyller kriterier.")
 
     # Allokeringar i %
     current_alloc = get_current_allocations_pct_three(balances, tuple(syms_list), prices, quote_ccy)
     print("Nuvarande allokering (%):", current_alloc)
 
-    # print("Kontrollerar marknader...")
-    # markets = broker.exchange.load_markets()
-    # for sym_pair in syms_list:
-    #    if sym_pair not in markets:
-    #        sys.exit(f"Symbolen {sym_pair} finns inte på denna marknad.")
-    #    info = markets[sym_pair]["info"]
-    #    print(f"✔ {sym_pair} tillåten, permissions: {info.get('permissions')}")
-    #
-    # print("Exchange options:", broker.exchange.options)
+    # Rebalansering enligt nya regler.
+    # Byt ut signals -> bas-ccy mapping, och bygg scores mapping (bas->int)
+    scores_map = {}
+    for i, full_sym in enumerate(syms_list):
+        base = base_ccys[i]
+        scores_map[base] = meta[full_sym]["score"]
 
-    # Rebalansering
     rb: RebalanceResult = rebalance_three(
         [b for b in base_ccys],                 # symbols som bas-ccy
         {b: signals[b] for b in base_ccys},     # signal per bas
         current_alloc,                          # procent-alloc inkl USD
-        tolerance=args.tolerance,
-        only_if_outside_band=(not args.rebalance_even_when_inside_band),
+        scores=scores_map,
     )
 
     print("Målvikt (%):", rb.target_allocations)
@@ -355,8 +360,11 @@ def main():
         if usd_delta > 0:
             # KÖP bas för usd_delta (quote)
             usd_to_spend = usd_delta * fee_mult
+            # Nytt krav: köp inte om mindre än args.min_trade (default 20 USDC)
             if usd_to_spend >= args.min_trade and get_free_quote() >= usd_to_spend:
                 planned_orders.append(("BUY", sym_pair, usd_to_spend))
+            else:
+                print(f"Skippar köp {base}: för litet belopp (~{usd_to_spend:.2f} {quote_ccy}) < min_trade {args.min_trade}")
         else:
             # SÄLJ bas för |usd_delta| → qty
             px = prices[sym_pair]
@@ -364,11 +372,13 @@ def main():
             qty = min(qty, get_free_base(base))
             if qty * px >= args.min_trade and qty > 0:
                 planned_orders.append(("SELL", sym_pair, qty))
+            else:
+                print(f"Skippar försäljning {base}: för liten post (≈{qty*px:.2f} {quote_ccy}) < min_trade {args.min_trade}")
 
     # Kör ordrar
     executions = []
     if not planned_orders:
-        print("Ingen rebalans behövs (inom band eller små poster).")
+        print("Ingen rebalans behövs eller inga orderar över minsta storlek.")
     else:
         for side, sym_pair, amount in planned_orders:
             if args.dry_run:
