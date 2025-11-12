@@ -55,7 +55,7 @@ export IN_DATA_SOLANA="$FILE_SOLANA"
 #  --exchange binance \
 #  --portfolio portfolio.json
 
- python ta_signal_agent_live_three_assets_weighted.py \
+ python ta_signal_agent_live_three_assets.py \
   --csvA $IN_DATA_BNB \
   --csvB $IN_DATA_ETHEREUM \
   --csvC $IN_DATA_SOLANA \
