@@ -6,7 +6,7 @@
 # 2) Or use full form:
 #      ./binance_debug.sh --key-env BINANCE_API_KEY --sig-env BINANCE_SIGNATURE
 # 3) To compute signature from secret instead of using precomputed sig:
-#      ./binance_debug.sh --key-env BINANCE_API_KEY --secret-env BINANCE_API_SECRET --compute-sig
+#      ./binance_debug.sh --key-env CCXT_API_KEY --secret-env CCXT_API_SECRET --compute-sig
 #
 # NOTE: This script prints debug info (status, headers, body). Do NOT paste logs containing secrets publicly.
 
