@@ -1,5 +1,6 @@
 *.csv
 *.swp
+local.sh
 portfolio.json
 secrets.json
 history/

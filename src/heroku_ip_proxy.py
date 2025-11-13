@@ -120,3 +120,10 @@ def getProxy():
     dbg_binance_context(proxies)
     _probe_proxy(proxies)
     return proxies
+
+if __name__ == "__main__":
+    proxies = getProxy()
+    print("Proxies:", proxies)
+
+    r = requests.get("https://api.ipify.org?format=json", proxies=proxies, timeout=10)
+    print("IP enligt ipify:", r.text)
