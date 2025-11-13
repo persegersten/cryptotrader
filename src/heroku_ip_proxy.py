@@ -1,4 +1,5 @@
 import os
+import requests
 
 def getProxy():
     raw = os.environ.get("FIXIE_SOCKS_HOST") 
@@ -11,5 +12,9 @@ def getProxy():
             "http": fixie_url,
             "https": fixie_url,
         }
+
+        print("Proxies:", proxies)
+        r = requests.get("https://api.ipify.org?format=json", proxies=proxies, timeout=10)
+        print("Utgående IP via Fixie:", r.text)
 
     return proxies
