@@ -1,4 +1,3 @@
-```markdown
 # CryptoHunk
 
 Lightweight scripts and tools to analyse and (optionally) trade a small multi-asset crypto portfolio using downloaded OHLCV data and a TA-based signal agent.
@@ -116,4 +115,3 @@ Contributing
 
 License
 - No license file is included in the repo by default; add a LICENSE file if you intend to make this open source.
-```
