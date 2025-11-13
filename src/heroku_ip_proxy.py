@@ -1,14 +1,12 @@
 import os
 
-
 def getProxy():
-    # Hämta Fixie Socks URL från Heroku config
-    fixie_url = os.environ.get("FIXIE_SOCKS_HOST")
+    raw = os.environ.get("FIXIE_SOCKS_HOST") 
 
-    # Ställ in proxies för requests
-    # Sätt upp proxies bara om Fixie är satt
     proxies = None
-    if fixie_url:
+    if raw:
+        # Låt proxyn göra DNS (socks5h) så går allting via Fixie
+        fixie_url = f"socks5h://{raw}"
         proxies = {
             "http": fixie_url,
             "https": fixie_url,
