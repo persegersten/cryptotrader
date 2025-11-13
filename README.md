@@ -3,7 +3,7 @@
 
 Lightweight scripts and tools to analyse and (optionally) trade a small multi-asset crypto portfolio using downloaded OHLCV data and a TA-based signal agent.
 
-This README describes what the repository does, how to run it (dry-run vs live), and what the included shell scripts do. The README was written using the two primary runner scripts as starting points:
+This README describes what the repository does, how to run it (dry-run vs live), and what the included shell scripts do. There are two primary runner scripts:
 
 - `analyse_and_trade_three_assets_weighted.sh`
 - `dryrun_analyse_and_trade.sh`
@@ -25,9 +25,9 @@ The "three asset" flow used in the scripts is: BNB, ETH, SOL (symbols used when 
 ## Quickstart
 
 Prerequisites
-- Python 3.8+ (virtualenv recommended)
+- Python 3.8+
 - pip
-- (Optional for live trading) Binance API key & secret configured for any trading scripts that actually place orders.
+- Binance API key & secret configured for any trading scripts that actually place orders.
 
 Setup
 1. Clone the repository:
@@ -37,7 +37,7 @@ Setup
 2. Create and activate a virtual environment, install dependencies (if a requirements file exists):
    python -m venv .venv
    source .venv/bin/activate
-   pip install -r requirements.txt   # if present
+   pip install -r requirements.txt 
 
 3. Ensure the following folders exist (scripts expect them):
    - ./bnb_data
@@ -45,9 +45,17 @@ Setup
    - ./solana_data
    - ./history
 
-4. (Optional) Set environment variables for any exchange APIs you will use. For Binance examples:
+4. Set environment variables for any exchange APIs you will use. For Binance examples:
    export BINANCE_API_KEY="your_key"
    export BINANCE_SECRET="your_secret"
+
+   For local convenience (e.g., on a laptop) you can place API keys in an untracked secrets.file at the repo root, but do not commit it — environment variables or a secrets manager are still recommended.
+
+   secrets.json:
+   {
+    "CCXT_API_KEY": "your_key",
+    "CCXT_API_SECRET": "your_secret"
+  }
 
 Usage — dry run (recommended for testing)
 - Make executable (if not already):
@@ -83,7 +91,7 @@ Directory / file expectations
 - `portfolio.json` — generated/updated by `src/download_portfolio.py`.
 
 Important behavior details
-- The runner scripts look for the first file in each data folder (via `find ... | head -n 1`) and set `IN_DATA_BNB`, `IN_DATA_ETHEREUM`, `IN_DATA_SOLANA` environment variables to those file paths before invoking the TA agent.
+- The runner scripts look for the first file in each data folder (via `find ... | head -n 1`) and set `IN_DATA_BNB`, `IN_DATA_ETHEREUM`, `IN_DATA_SOLANA` environment variables to those file paths befo[...]
 - The dry-run script is identical except it adds `--dry-run` to the TA agent invocation, preventing live trades.
 
 Configuration hints
@@ -99,6 +107,7 @@ Troubleshooting
 Security and safety
 - Always use `dryrun_analyse_and_trade.sh` to validate the pipeline before enabling live trading.
 - Keep API keys and secrets out of the repo. Use environment variables or a secrets manager.
+- For local convenience (e.g., running on a laptop) you may use an untracked secrets.file at the repository root, but do not commit it — environment variables or a secrets manager are still recommended.
 - Test on small sizes or a paper account before increasing risk.
 
 Contributing
@@ -107,9 +116,4 @@ Contributing
 
 License
 - No license file is included in the repo by default; add a LICENSE file if you intend to make this open source.
-
-If you'd like, I can:
-- Create this README.md in the repository,
-- Add example environment variable and cron/systemd unit snippets,
-- Or convert the runner scripts into a single configurable script that accepts a list of assets and schedules.
 ```
