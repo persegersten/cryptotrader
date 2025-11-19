@@ -15,28 +15,6 @@ import requests
 from datetime import datetime, UTC
 from zoneinfo import ZoneInfo  # Python 3.9+
 from pathlib import Path
-import argparse
-
-def parse_args():
-    parser = argparse.ArgumentParser(description='Download OHLCV data from CoinGecko')
-    parser.add_argument('--coin-id', default="ethereum",
-                      help='Coin ID (default: ethereum)')
-    parser.add_argument('--vs-currency', default="usd",
-                      help='Quote currency (default: usd)')
-    parser.add_argument('--days', type=int, default=30,
-                      help='Number of days of history (default: 30)')
-    parser.add_argument('--data-folder', default="./kursdata",
-                      help='Folder for downloaded price data (default: ./kursdata)')
-    parser.add_argument('--history-folder', default="./history",
-                      help='Folder for downloaded history (default: ./history)')
-    return parser.parse_args()
-
-args = parse_args()
-COIN_ID = args.coin_id
-VS_CURRENCY = args.vs_currency
-DAYS = args.days
-DATA_FOLDER = args.data_folder
-HISTORY_FOLDER = args.history_folder
 
 def fetch_ohlc(coin_id: str, vs_currency: str, days: int):
     """
@@ -89,10 +67,10 @@ def nearest_volume(ts_ms: int, vol_rows, tol_ms: int = 60 * 60 * 1000):
         return best[1]
     return None  # saknar närliggande volym
 
-def main():
+def main(coin_id :str = 'ethereum', vs_currency: str = 'usd', days :int = 30, data_folder :str = './kursdata', history_folder :str = './history'):
     # 1) Hämta data
-    ohlc = fetch_ohlc(COIN_ID, VS_CURRENCY, DAYS)
-    volumes = fetch_volumes(COIN_ID, VS_CURRENCY, DAYS)
+    ohlc = fetch_ohlc(coin_id, vs_currency, days)
+    volumes = fetch_volumes(coin_id, vs_currency, days)
 
     # 2) Förbered volym-lista (t_ms, vol as float)
     vol_rows = [(int(row[0]), float(row[1])) for row in volumes]
@@ -116,10 +94,10 @@ def main():
     # 4) Filnamn med Stockholm-stämpel
     now_se = datetime.now(ZoneInfo("Europe/Stockholm"))
     tag = now_se.strftime("%Y%m%d_%H%M%S")
-    fname = f"crypto_{COIN_ID}_{VS_CURRENCY}_{tag}.csv"
+    fname = f"crypto_{coin_id}_{vs_currency}_{tag}.csv"
     
     # Skapa katalogen om den inte finns
-    DATA_PATH = Path(DATA_FOLDER)
+    DATA_PATH = Path(data_folder)
     DATA_PATH.mkdir(parents=True, exist_ok=True)
 
     # Sätt filnamn med full sökväg

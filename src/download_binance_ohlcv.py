@@ -23,7 +23,6 @@ import requests
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 from pathlib import Path
-import argparse
 
 BINANCE_URL = "https://api.binance.com/api/v3/klines"
 
@@ -45,15 +44,6 @@ INTERVAL_MS = {
     "1w": 604_800_000,
     "1M": 2_592_000_000,  # approx
 }
-
-def parse_args():
-    p = argparse.ArgumentParser(description="Download OHLCV data from Binance klines API")
-    p.add_argument('--symbol', default="BTCUSDT", help='Trading pair symbol (default: BTCUSDT)')
-    p.add_argument('--interval', default="4h", help='Kline interval (e.g. 1h, 4h, 1d). Default: 4h')
-    p.add_argument('--days', type=int, default=30, help='Number of days back from now (default: 30)')
-    p.add_argument('--limit', type=int, default=1000, help='Max candles per request (default: 1000, Binance max)')
-    p.add_argument('--data-folder', default="./kursdata", help='Folder for downloaded price data (default: ./kursdata)')
-    return p.parse_args()
 
 def ms_now_utc() -> int:
     return int(datetime.now(timezone.utc).timestamp() * 1000)
@@ -155,13 +145,17 @@ def write_csv(rows, out_path: Path):
                 "volume": v,
             })
 
-def main():
-    args = parse_args()
-    symbol = args.symbol
-    interval = args.interval
-    days = args.days
-    limit = args.limit
-    data_folder = Path(args.data_folder)
+def parse_args():
+    p = argparse.ArgumentParser(description="Download OHLCV data from Binance klines API")
+    p.add_argument('--symbol', default="BTCUSDT", help='Trading pair symbol (default: BTCUSDT)')
+    p.add_argument('--interval', default="4h", help='Kline interval (e.g. 1h, 4h, 1d). Default: 4h')
+    p.add_argument('--days', type=int, default=30, help='Number of days back from now (default: 30)')
+    p.add_argument('--limit', type=int, default=1000, help='Max candles per request (default: 1000, Binance max)')
+    p.add_argument('--data-folder', default="./kursdata", help='Folder for downloaded price data (default: ./kursdata)')
+    return p.parse_args()
+
+def run(symbol :str='BTCUSDT', interval :str='4h', days :str=30, limit :int=1000, data_folder :str='./kursdata'):
+    data_folder = Path(data_folder)
 
     # Hämta data
     rows = collect_klines(symbol, interval, days, limit=limit)
@@ -176,4 +170,5 @@ def main():
     print(f"✅ Sparat {len(rows)} rader till: {out}")
 
 if __name__ == "__main__":
-    main()
+    print('Starting a dowload from main')
+    run()

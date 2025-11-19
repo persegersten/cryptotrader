@@ -32,15 +32,9 @@ def load_secrets_if_missing(file_path="secrets.json"):
     except Exception as e:
         print(f"⚠️  Kunde inte läsa {file_path}: {e}")
 
-def main():
+def run(out_file: str, quote: str):
     proxies = getProxy()
     print(f"IP proxie: {proxies}")
-
-    ap = argparse.ArgumentParser(description="Ladda ner Binance-portfölj")
-    ap.add_argument("--sandbox", action="store_true", help="Kör mot Binances testnet (låtsaspengar)")
-    ap.add_argument("--out", default="portfolio.json", help="Filnamn för export (default: portfolio.json)")
-    ap.add_argument("--quote", default="USDT", help="Quote-valuta att betrakta som likvida medel (default: USDT)")
-    args = ap.parse_args()
 
     # Ladda ev. hemligheter från fil
     load_secrets_if_missing("secrets.json")
@@ -65,10 +59,6 @@ def main():
         }
     })
 
-    if args.sandbox:
-        exchange.set_sandbox_mode(True)
-        print("🧪 Använder Binance testnet")
-
     # Hämta balans
     print("🔄 Hämtar portfölj...")
     balance = exchange.fetch_balance()
@@ -76,7 +66,7 @@ def main():
     # Extrahera användbara delar
     portfolio = {
         "timestamp": exchange.milliseconds(),
-        "exchange": "binance-testnet" if args.sandbox else "binance",
+        "exchange": "binance",
         "free": balance.get("free", {}),
         "used": balance.get("used", {}),
         "total": balance.get("total", {}),
@@ -92,14 +82,14 @@ def main():
         print("  (Inga tillgångar hittades)")
 
     # Likvida medel i quote (t.ex. USDT)
-    quote = args.quote.upper()
+    quote = quote.upper()
     free_bal = portfolio["free"].get(quote, 0.0)
     print(f"\n💰 Likvida medel: {free_bal:.2f} {quote}")
 
     # Spara till fil
-    out_path = Path(args.out)
+    out_path = Path(out_file)
     out_path.write_text(json.dumps(portfolio, indent=2, ensure_ascii=False))
     print(f"\n💾 Portföljen sparad till: {out_path.resolve()}")
 
 if __name__ == "__main__":
-    main()
+    print("hi there")
