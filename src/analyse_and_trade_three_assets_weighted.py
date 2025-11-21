@@ -15,6 +15,7 @@ from pathlib import Path
 import shutil
 import logging
 from typing import Tuple
+import os
 
 # Import the agent function directly
 from ta_signal_agent_live_three_assets import run_agent
@@ -99,5 +100,10 @@ def main(dry_run: bool = True):
     )
     log.info("Agent finished. Snapshot keys: %s", ", ".join(snapshot.keys()))
 
+def is_trade_run() -> bool:
+    return os.getenv("TRADE_DRY_RUN") in ("1", "true", "True", "YES", "yes")
+
 if __name__ == "__main__":
-    main(dry_run=True)
+    dry_run=is_trade_run()
+    main(dry_run)
+

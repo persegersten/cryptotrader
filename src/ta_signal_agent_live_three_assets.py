@@ -1,4 +1,203 @@
-# --- Add the following function to src/ta_signal_agent_live_three_assets.py (place it near the top-level main) ---
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+ta_signal_agent_live_binary.py (3-asset edition)
+
+Tre-tillgångars TA-agent med CCXT-broker och dry-run.
+- Läser tre CSV:er (OHLCV), kör TA per symbol (BUY/SELL/HOLD)
+- Hämtar portfölj (tre bas-coin + USD/quote)
+- Rebalanserar enligt enkel strategi:
+    * SELL => 0% (sälj allt)
+    * HOLD => behåll nuvarande
+    * BUY  => köp endast EN tillgång (den BUY med högst score) med all tillgänglig USD
+- Lägg inte köp under minimal USD (default 20 USDC)
+- Lägger market-ordrar (eller simulerar i dry-run)
+- Loggar beslut
+
+Kräver: portfolio_rebalancer.py i samma katalog.
+"""
+
+import os
+import sys
+import json
+import csv
+import argparse
+from datetime import datetime
+from zoneinfo import ZoneInfo
+from pathlib import Path
+from typing import Dict, List, Tuple
+
+import pandas as pd
+import numpy as np
+import ccxt
+
+from heroku_ip_proxy import get_proxy
+
+from portfolio_rebalancer import rebalance_three, RebalanceResult
+from download_portfolio import load_secrets_if_missing
+
+# --------- nycklar --------------------
+REQUIRED_ENV = ("CCXT_API_KEY", "CCXT_API_SECRET")
+
+def require_env(keys=REQUIRED_ENV) -> None:
+    missing = [k for k in keys if not os.environ.get(k)]
+    if missing:
+        names = ", ".join(missing)
+        sys.exit(
+            "Saknar nödvändiga miljövariabler: "
+            f"{names}. Sätt dem i miljön eller lägg en secrets.json."
+        )
+
+# ---------- TEKNISK ANALYS ----------
+def ema(series, n):
+    return series.ewm(span=n, adjust=False).mean()
+
+def rsi_wilder(close, n=14):
+    delta = close.diff()
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+    avg_gain = gain.ewm(alpha=1/n, adjust=False, min_periods=n).mean()
+    avg_loss = loss.ewm(alpha=1/n, adjust=False, min_periods=n).mean()
+    rs = avg_gain / avg_loss
+    return 100 - (100 / (1 + rs))
+
+def macd(close, fast=12, slow=26, signal=9):
+    macd_line = ema(close, fast) - ema(close, slow)
+    signal_line = ema(macd_line, signal)
+    return macd_line, signal_line, macd_line - signal_line
+
+def decide_signal(df, close_col="close"):
+    df = df.copy()
+    df["rsi_14"] = rsi_wilder(df[close_col])
+    df["ema_12"] = ema(df[close_col], 12)
+    df["ema_26"] = ema(df[close_col], 26)
+    df["ema_200"] = ema(df[close_col], 200)
+    macd_line, sig_line, hist = macd(df[close_col])
+    df["macd"], df["macd_signal"], df["macd_hist"] = macd_line, sig_line, hist
+
+    last = df.iloc[-1]
+    score = 0
+    reasons = []
+
+    # RSI
+    if last["rsi_14"] < 30:
+        score += 1; reasons.append("RSI < 30 (bullish)")
+    elif last["rsi_14"] > 70:
+        score -= 1; reasons.append("RSI > 70 (bearish)")
+
+    # EMA crossover
+    if last["ema_12"] > last["ema_26"]:
+        score += 1; reasons.append("EMA12 > EMA26 (bullish)")
+    elif last["ema_12"] < last["ema_26"]:
+        score -= 1; reasons.append("EMA12 < EMA26 (bearish)")
+
+    # MACD
+    if last["macd"] > last["macd_signal"]:
+        score += 1; reasons.append("MACD > signal (bullish)")
+    else:
+        score -= 1; reasons.append("MACD < signal (bearish)")
+
+    # Lång trend
+    if last[close_col] > last["ema_200"]:
+        score += 1; reasons.append("Pris > EMA200 (bullish lång trend)")
+    else:
+        score -= 1; reasons.append("Pris < EMA200 (bearish lång trend)")
+
+    if score >= 2:
+        return "BUY", score, reasons
+    elif score <= -2:
+        return "SELL", score, reasons
+    return "HOLD", score, reasons
+
+# ---------- CCXT BROKER ----------
+class CCXTBroker:
+    def __init__(self, exchange_id, api_key=None, api_secret=None, sandbox=False):
+        if ccxt is None:
+            raise RuntimeError("ccxt saknas. Installera med: pip install ccxt")
+
+        proxies = get_proxy()
+        print(f"IP proxy: {proxies}")
+
+        klass = getattr(ccxt, exchange_id)
+        exchange_config = {
+            "apiKey": api_key or os.getenv("CCXT_API_KEY", ""),
+            "secret": api_secret or os.getenv("CCXT_API_SECRET", ""),
+            "enableRateLimit": True,
+            "options": {"defaultType": "spot"},
+        }
+        if proxies:
+            exchange_config["requests_kwargs"] = {"proxies": proxies}
+
+        self.exchange = klass(exchange_config)
+        if sandbox and hasattr(self.exchange, "set_sandbox_mode"):
+            self.exchange.set_sandbox_mode(True)
+
+    def fetch_balances(self):
+        return self.exchange.fetch_balance()
+
+    def fetch_price(self, symbol: str) -> float:
+        t = self.exchange.fetch_ticker(symbol)
+        return t.get("last") or t.get("close") or t.get("bid") or t.get("ask")
+
+    def market_buy_quote(self, symbol: str, quote_amount: float):
+        """
+        Market-köp för en given quote-amount (t.ex. USDT).
+        Skapar order i 'quote' om börsen stöder det, annars approximerar vi qty.
+        """
+        m = self.exchange.load_markets()
+        market = m[symbol]
+        if market.get("quote", "").upper() in ("USDT", "USD", "USDC") and market.get("spot", True):
+            # De flesta stödjer 'createOrder' i bas-kvantitet, så beräkna qty från pris:
+            px = self.fetch_price(symbol)
+            qty = quote_amount / max(px, 1e-12)
+            return self.exchange.create_order(symbol, "market", "buy", qty)
+        else:
+            # fallback: ändå qty
+            px = self.fetch_price(symbol)
+            qty = quote_amount / max(px, 1e-12)
+            return self.exchange.create_order(symbol, "market", "buy", qty)
+
+    def market_sell_base(self, symbol: str, base_qty: float):
+        return self.exchange.create_order(symbol, "market", "sell", base_qty)
+
+# ---------- Hjälp: portfölj & allokeringar ----------
+def get_current_allocations_pct_three(
+    balances: dict,
+    symbols: Tuple[str, str, str],
+    prices: Dict[str, float],
+    quote_ccy: str
+) -> Dict[str, float]:
+    """
+    Räknar procentallokeringar över tre bas-coin + USD (quote_ccy).
+    balances: från ccxt.fetch_balance()
+    """
+    base_ccys = [s.split("/")[0] for s in symbols]
+    vals: Dict[str, float] = {}
+    total = 0.0
+
+    # värde per bas
+    for i, sym in enumerate(symbols):
+        base = base_ccys[i]
+        qty = float(balances["free"].get(base, 0.0) + balances["total"].get(base, 0.0) - balances["used"].get(base, 0.0)) \
+              if isinstance(balances.get("free"), dict) else float(balances.get(base, 0.0))
+        v = qty * prices[sym]
+        vals[base] = v
+        total += v
+
+    # USD/quote
+    quote_bal = float(balances["free"].get(quote_ccy, 0.0)) if isinstance(balances.get("free"), dict) else float(balances.get(quote_ccy, 0.0))
+    vals["USD"] = quote_bal
+    total += quote_bal
+
+    # till procent
+    if total <= 0:
+        return {**{b: 0.0 for b in base_ccys}, "USD": 100.0}
+
+    alloc = {b: (vals[b] * 100.0 / total) for b in base_ccys}
+    alloc["USD"] = vals["USD"] * 100.0 / total
+    return alloc
+
 
 def run_agent(
     csvA: str,
@@ -55,23 +254,26 @@ def run_agent(
         dfs[sym] = df
         signals[sym.split("/")[0]] = sig
         meta[sym] = {"score": score, "reasons": reasons, "ts": ts, "last_close": last_close}
-
+        print(f"{sym} - {meta[sym]}") # TODO format output
+    
     # Broker / portfolio: require_env guards that API keys exist in environment
     require_env()
     broker = CCXTBroker(exchange, api_key, api_secret, sandbox)
 
     balances = broker.fetch_balances()
 
-    # Fetch prices (fall back to last close from CSV on error)
+    # Fetch prices
     prices: Dict[str, float] = {}
     for s in syms_list:
         try:
             prices[s] = broker.fetch_price(s)
         except Exception:
-            prices[s] = meta[s]["last_close"]
+            raise RuntimeError("Failed to look up last close price")
 
     # current allocations (percent)
     current_alloc = get_current_allocations_pct_three(balances, tuple(syms_list), prices, quote_ccy)
+    # TODO imprve forma on output current alloc
+    print(f"Allocations {current_alloc}")
 
     # build scores_map and call rebalance_three
     scores_map = {}
@@ -149,7 +351,7 @@ def run_agent(
                     order = broker.market_sell_base(sym_pair, base_qty=amount)
                 executions.append({"side": side, "symbol": sym_pair, "amount": amount, "order_id": order.get("id") if isinstance(order, dict) else str(order)})
 
-    # build portfolio snapshot (same structure as CLI)
+    # build portfolio snapshot
     portfolio_snapshot = {
         "quote": quote_ccy,
         "prices": {s: prices[s] for s in syms_list},
@@ -163,7 +365,7 @@ def run_agent(
 
     # write outputs as the CLI did
     Path(log).write_text("") if False else None  # noop to avoid lint errors; keep original write logic below
-    # write CSV log row + portfolio json (replicate the CLI file-writing behavior)
+    # write CSV log row + portfolio json
     now = datetime.now(ZoneInfo("Europe/Stockholm")).strftime("%Y-%m-%d %H:%M:%S")
     row = {
         "time": now,
@@ -176,13 +378,14 @@ def run_agent(
         "reason": rb.reason,
         "dry_run": dry_run,
     }
-    log_file = Path(log)
-    exists = log_file.exists()
-    with log_file.open("a", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=row.keys())
-        if not exists:
-            writer.writeheader()
-        writer.writerow(row)
+    #log_file = Path(log)
+    #exists = log_file.exists()
+    #with log_file.open("a", newline="", encoding="utf-8") as f:
+    #    writer = csv.DictWriter(f, fieldnames=row.keys())
+    #    if not exists:
+    #        writer.writeheader()
+    #    writer.writerow(row)
+    print(f"{row}")
 
     Path(portfolio).write_text(json.dumps(portfolio_snapshot, indent=2, ensure_ascii=False))
     return portfolio_snapshot

@@ -34,7 +34,7 @@ def now_in_tz(tz_name: str) -> datetime:
 
 def run(grace_minutes: int, at_hours : list[int], time_zone: str):
     # Bypass med env
-    if os.getenv("FORCE_RUN") in ("1", "true", "True", "YES", "yes"):
+    if os.getenv("SCHEDULE_FORCE_RUN") in ("1", "true", "True", "YES", "yes"):
         print("FORCE_RUN är satt – kör!!!")
         return True
 

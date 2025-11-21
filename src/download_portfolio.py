@@ -16,7 +16,7 @@ import json
 from pathlib import Path
 import argparse
 import ccxt
-from heroku_ip_proxy import getProxy
+from heroku_ip_proxy import get_proxy
 
 def load_secrets_if_missing(file_path="secrets.json"):
     """Sätter endast env-variabler om de inte redan finns."""
@@ -33,7 +33,7 @@ def load_secrets_if_missing(file_path="secrets.json"):
         print(f"⚠️  Kunde inte läsa {file_path}: {e}")
 
 def run(out_file: str, quote: str):
-    proxies = getProxy()
+    proxies = get_proxy()
     print(f"IP proxie: {proxies}")
 
     # Ladda ev. hemligheter från fil

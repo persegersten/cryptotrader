@@ -103,7 +103,7 @@ def _probe_proxy(proxies):
     else:
         log.info("DBG: no api key/secret available in env, skipping account test")
 
-def getProxy():
+def get_proxy():
     raw = os.environ.get("FIXIE_SOCKS_HOST")
 
     proxies = None
@@ -116,9 +116,9 @@ def getProxy():
         }
 
     # Log and probe the proxy before returning
-    logging.getLogger("binance_dbg").info("getProxy() built proxies: %s", _mask_val(proxies))
-    dbg_binance_context(proxies)
-    _probe_proxy(proxies)
+    logging.getLogger("binance_dbg").info("get_proxy() built proxies: %s", _mask_val(proxies))
+    # dbg_binance_context(proxies)
+    # _probe_proxy(proxies)
     return proxies
 
 if __name__ == "__main__":
